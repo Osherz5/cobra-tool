@@ -10,12 +10,14 @@ from .report import gen_report
 from .report import gen_report_2
 from scenarios.scenario_1 import scenario_1
 from scenarios.scenario_2 import scenario_2
+from scenarios.scenario_3 import scenario_3
 from scenarios.scenario_7 import scenario_7
 from scenarios.scenario_8 import scenario_8
 from scenarios.scenario_3.scenario_3 import scenario_3_execute
 from scenarios.scenario_4.scenario_4 import scenario_4_execute
 from scenarios.scenario_5.scenario_5 import scenario_5_execute
 from scenarios.scenario_6.scenario_6 import scenario_6_execute
+from scenarios.scenario_9 import scenario_9
 
 
 def loading_animation():
@@ -52,12 +54,14 @@ def select_attack_scenario():
     print(
         colored("8. AWS Privilege Escalation, Persistence & Data Exfiltration",
                 color="green"))
-    print(colored("9. Exit", color="green"))
+    print(colored("9. GCP Cloud Detection and Response", color="green"))
+    print(colored("10. Exit", color="green"))
+   
     while True:
         try:
             choice = int(input(colored("Enter your choice: ", color="yellow")))
-            if choice not in [1, 2, 3, 4, 5, 6, 7, 8, 9]:
-                raise ValueError(colored("Invalid choice. Please enter 1, 2, 3, 4, 5, 6, 7, 8 or 9.", color="red"))
+            if choice not in range(1, 11):
+                raise ValueError(colored("Invalid choice. Please enter 1-10.", color="red"))
             return choice
         except ValueError as e:
             print(e)
@@ -97,6 +101,8 @@ def execute_scenario(x, manual):
         elif x == 8:
             scenario_8.ScenarioExecution().scenario_8_execute(manual)
         elif x == 9:
+            scenario_9.ScenarioExecution().scenario_9_execute(manual)
+        elif x == 10:
             exit()
         else:
             print("Invalid Scenario Selected")
@@ -118,6 +124,8 @@ def post_execute_scenario(x):
             scenario_7.ScenarioExecution.post_execution("None")
         elif x == 8:
             scenario_8.ScenarioExecution().post_execution()
+        elif x == 9:
+            scenario_9.ScenarioExecution().post_execution()
         else:
             print("Invalid Scenario Selected")
         print(colored("Thank you for using COBRA!", color="green"))
@@ -148,6 +156,8 @@ def main(action, simulation, scenario, manual):
                 post_execute_scenario(7)
             elif scenario_choice == 8:
                 post_execute_scenario(8)
+            elif scenario_choice == 9:
+                post_execute_scenario(9)
     elif action == 'status' and scenario == "cobra-scenario-1":
         subprocess.call("cd ./scenarios/scenario_1/infra/ && pulumi stack ls", shell=True)
     elif action == 'status' and scenario == "cobra-scenario-2":
@@ -170,6 +180,10 @@ def main(action, simulation, scenario, manual):
         subprocess.call("cd ./scenarios/scenario_7/infra && pulumi destroy -s cobra-scenario-7 --yes", shell=True)
     elif action == 'destroy' and scenario == "cobra-scenario-8":
         scenario_8.ScenarioExecution().scenario_8_destroy()
+    elif action == 'destroy' and scenario == "cobra-scenario-9":
+        scenario_9.ScenarioExecution().scenario_9_destroy()
+    elif action == 'status' and scenario == "cobra-scenario-9":
+        subprocess.call("cd ./scenarios/scenario_9/infra/ && pulumi stack ls", shell=True)
 
     else:
         print('No options provided. --help to know more')

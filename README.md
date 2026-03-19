@@ -243,6 +243,7 @@ python3 cobra.py destroy --scenario <cobra-scenario-1/cobra-scenario-2>
 5. Instance takeover, abuse s3 access & perform ransomware using external KMS key
 7. Container Escape & Cluster Takeover in EKS
 8. AWS Privilege Escalation, Persistence & Data Exfiltration
+9. GCP Cloud Detection and Response
 
 ### To Do / In Roadmap
 
