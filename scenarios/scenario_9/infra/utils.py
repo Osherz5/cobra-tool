@@ -1,18 +1,36 @@
 import os
+import ssl
 import sys
 import urllib.request
 
 
+def _create_ssl_context():
+    """Create an SSL context with proper certificate verification."""
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return ssl.create_default_context()
+
+
 def fetch_public_ip():
     """Fetch the public IP of the machine running this script."""
-    try:
-        response = urllib.request.urlopen("https://api.ipify.org")
-        ip = response.read().decode("utf-8").strip()
-        if not ip:
-            raise Exception("Could not fetch IP, got empty response.")
-        return ip
-    except Exception as e:
-        raise Exception(f"Error fetching public IP: {e}")
+    urls = [
+        "https://api.ipify.org",
+        "http://api.ipify.org",
+    ]
+    last_error = None
+    for url in urls:
+        try:
+            ctx = _create_ssl_context() if url.startswith("https") else None
+            response = urllib.request.urlopen(url, context=ctx, timeout=10)
+            ip = response.read().decode("utf-8").strip()
+            if not ip:
+                raise Exception("Could not fetch IP, got empty response.")
+            return ip
+        except Exception as e:
+            last_error = e
+    raise Exception(f"Error fetching public IP: {last_error}")
 
 
 def read_public_key(pub_key_path):

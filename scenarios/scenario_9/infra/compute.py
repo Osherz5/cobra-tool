@@ -2,19 +2,32 @@ import pulumi
 import pulumi_gcp as gcp
 
 
-def create_service_account():
-    """Create the GCP service account for the scenario 9 compute instance.
+def create_sa_role_binding(name, service_account, role):
+    """Bind an IAM role to a service account at the GCP project level.
+
+    Uses ``gcp.projects.IAMMember`` which is additive — it will not
+    remove other members that already hold the same role.
+
+    Args:
+        name: Pulumi resource name for the binding.
+        service_account: The ``gcp.serviceaccount.Account`` to grant the role to.
+        role: The IAM role string (e.g. ``roles/compute.editor``).
 
     Returns:
-        The created ``gcp.serviceaccount.Account`` resource.
+        The created ``gcp.projects.IAMMember`` resource.
     """
-    return gcp.serviceaccount.Account("cobra-scenario-9-sa",
-        account_id="cobra-scenario-9-sa",
-        display_name="Cobra Scenario 9 Service Account",
+    gcp_config = pulumi.Config("gcp")
+    project = gcp_config.require("project")
+
+    return gcp.projects.IAMMember(name,
+        project=project,
+        role=role,
+        member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
     )
 
 
 def create_instance(
+    name: str,
     machine_type: str,
     zone: str,
     ubuntu_image: str,
@@ -25,9 +38,10 @@ def create_instance(
     startup_script,
     default_labels: dict,
 ):
-    """Create the GCP Compute Engine instance for scenario 9.
+    """Create a GCP Compute Engine instance for scenario 9.
 
     Args:
+        name: Instance name (used as both the Pulumi resource name and GCE name).
         machine_type: GCE machine type (e.g. ``e2-medium``).
         zone: GCP zone for the instance.
         ubuntu_image: Full image path for the boot disk.
@@ -41,8 +55,8 @@ def create_instance(
     Returns:
         The created ``gcp.compute.Instance`` resource.
     """
-    return gcp.compute.Instance("cobra-scenario-9-instance",
-        name="cobra-scenario-9-instance",
+    return gcp.compute.Instance(name,
+        name=name,
         machine_type=machine_type,
         zone=zone,
         boot_disk=gcp.compute.InstanceBootDiskArgs(

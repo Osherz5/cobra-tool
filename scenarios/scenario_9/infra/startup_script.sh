@@ -80,7 +80,7 @@ FLASK_APP
 cat > /opt/ping-app/Dockerfile << 'DOCKERFILE'
 FROM python:3.12-slim
 
-RUN apt-get update && apt-get install -y iputils-ping && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y iputils-ping curl && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir flask
 
 WORKDIR /app

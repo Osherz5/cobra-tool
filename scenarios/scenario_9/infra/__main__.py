@@ -1,9 +1,10 @@
 import pulumi
+import pulumi_gcp as gcp
 
 from utils import fetch_public_ip, read_public_key
 from network import create_network
-from compute import create_service_account, create_instance
-from agent import prepare_startup_script
+from compute import create_sa_role_binding, create_instance
+from agent import prepare_startup_script, prepare_startup_script_2
 
 config = pulumi.Config()
 GCP_ZONE = config.get("zone") or "us-central1-a"
@@ -21,7 +22,7 @@ SSH_USER = "cobra"
 # Read custom labels from Pulumi config to apply to all GCP resources that support labeling
 DEFAULT_LABELS = config.require_object("labels")
 
-# Whether to include the Cortex XDR agent on the compute instance
+# Whether to include the Cortex XDR agent on the compute instances
 INCLUDE_AGENT = config.get_bool("includeAgent") or False
 
 # ---------------------------------------------------------------------------
@@ -44,24 +45,42 @@ pulumi.log.warn(
 network, _firewall = create_network(ssh_cidr)
 
 # ---------------------------------------------------------------------------
-# IAM / Compute
+# IAM / Service Accounts
 # ---------------------------------------------------------------------------
-service_account = create_service_account()
+service_account = gcp.serviceaccount.Account("cobra-scenario-9-sa",
+    account_id="cobra-scenario-9-sa",
+    display_name="Cobra Scenario 9 Service Account",
+)
+create_sa_role_binding("sa-compute-editor", service_account, "roles/compute.editor")
+
+service_account_2 = gcp.serviceaccount.Account("cobra-scenario-9-sa-2",
+    account_id="cobra-scenario-9-sa-2",
+    display_name="Cobra Scenario 9 Service Account 2",
+)
+create_sa_role_binding("sa2-sa-admin", service_account_2, "roles/iam.serviceAccountAdmin")
 
 # ---------------------------------------------------------------------------
-# Agent & Startup Script
+# Agent & Startup Scripts
 # ---------------------------------------------------------------------------
-startup_script, agent_exports = prepare_startup_script(
+startup_script, agent_exports, agent_bucket, agent_object = prepare_startup_script(
     include_agent=INCLUDE_AGENT,
     config=config,
     service_account=service_account,
     default_labels=DEFAULT_LABELS,
 )
 
+startup_script_2 = prepare_startup_script_2(
+    include_agent=INCLUDE_AGENT,
+    service_account=service_account_2,
+    agent_bucket=agent_bucket,
+    agent_object=agent_object,
+)
+
 # ---------------------------------------------------------------------------
-# Compute Instance
+# Compute Instances
 # ---------------------------------------------------------------------------
 instance = create_instance(
+    name="cobra-scenario-9-instance",
     machine_type=MACHINE_TYPE,
     zone=GCP_ZONE,
     ubuntu_image=UBUNTU_IMAGE,
@@ -70,6 +89,19 @@ instance = create_instance(
     ssh_user=SSH_USER,
     ssh_public_key=SSH_PUBLIC_KEY,
     startup_script=startup_script,
+    default_labels=DEFAULT_LABELS,
+)
+
+instance_2 = create_instance(
+    name="cobra-scenario-9-instance-2",
+    machine_type=MACHINE_TYPE,
+    zone=GCP_ZONE,
+    ubuntu_image=UBUNTU_IMAGE,
+    network=network,
+    service_account=service_account_2,
+    ssh_user=SSH_USER,
+    ssh_public_key=SSH_PUBLIC_KEY,
+    startup_script=startup_script_2,
     default_labels=DEFAULT_LABELS,
 )
 
@@ -88,6 +120,14 @@ pulumi.export("SSH User", SSH_USER)
 pulumi.export("Web App URL", instance.network_interfaces[0].access_configs[0].nat_ip.apply(
     lambda ip: f"http://{ip}:8080/ping?address="
 ))
+
+pulumi.export("Instance 2 Name", instance_2.name)
+pulumi.export("Instance 2 ID", instance_2.id)
+pulumi.export("Instance 2 Zone", instance_2.zone)
+pulumi.export("Instance 2 Public IP", instance_2.network_interfaces[0].access_configs[0].nat_ip)
+pulumi.export("Instance 2 Private IP", instance_2.network_interfaces[0].network_ip)
+pulumi.export("Instance 2 Machine Type", instance_2.machine_type)
+pulumi.export("Service Account 2 Email", service_account_2.email)
 
 for key, value in agent_exports.items():
     pulumi.export(key, value)
