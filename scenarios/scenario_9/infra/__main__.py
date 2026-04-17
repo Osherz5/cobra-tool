@@ -51,7 +51,10 @@ service_account = gcp.serviceaccount.Account("cobra-scenario-9-sa",
     account_id="cobra-scenario-9-sa",
     display_name="Cobra Scenario 9 Service Account",
 )
+# Instance 1's SA needs serviceAccountUser & compute.editor to call setMetadata on instances
+# running as a different service account (e.g. Instance 2).
 create_sa_role_binding("sa-compute-editor", service_account, "roles/compute.editor")
+create_sa_role_binding("sa-sa-user", service_account, "roles/iam.serviceAccountUser")
 
 service_account_2 = gcp.serviceaccount.Account("cobra-scenario-9-sa-2",
     account_id="cobra-scenario-9-sa-2",
@@ -108,6 +111,9 @@ instance_2 = create_instance(
 # ---------------------------------------------------------------------------
 # Exports
 # ---------------------------------------------------------------------------
+gcp_config = pulumi.Config("gcp")
+pulumi.export("GCP Project", gcp_config.require("project"))
+
 pulumi.export("Instance Name", instance.name)
 pulumi.export("Instance ID", instance.id)
 pulumi.export("Instance Zone", instance.zone)
